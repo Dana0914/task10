@@ -18,6 +18,11 @@ import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.handlers.TracingHandler;
 import okhttp3.*;
 import org.json.JSONObject;
+import org.json.JSONArray;
+import java.util.List;
+import java.util.ArrayList;
+
+
 
 import java.io.IOException;
 import java.util.UUID;
@@ -131,8 +136,38 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 
 		Item item = new Item()
 				.withPrimaryKey("id", weatherData.getString("id"))
-				.withMap("forecast", weatherData.getJSONObject("forecast").toMap());
+				.withMap("forecast", jsonToMap(weatherData.getJSONObject("forecast")));
 
 		table.putItem(item);
+	}
+
+	private Map<String, Object> jsonToMap(JSONObject json) {
+		Map<String, Object> map = new HashMap<>();
+		for (String key : json.keySet()) {
+			Object value = json.get(key);
+			if (value instanceof JSONObject) {
+				map.put(key, jsonToMap((JSONObject) value)); // Recursively convert
+			} else if (value instanceof JSONArray) {
+				map.put(key, jsonArrayToList((JSONArray) value)); // Convert JSONArray
+			} else {
+				map.put(key, value);
+			}
+		}
+		return map;
+	}
+
+	private List<Object> jsonArrayToList(JSONArray jsonArray) {
+		List<Object> list = new ArrayList<>();
+		for (int i = 0; i < jsonArray.length(); i++) {
+			Object value = jsonArray.get(i);
+			if (value instanceof JSONObject) {
+				list.add(jsonToMap((JSONObject) value));
+			} else if (value instanceof JSONArray) {
+				list.add(jsonArrayToList((JSONArray) value));
+			} else {
+				list.add(value);
+			}
+		}
+		return list;
 	}
 }
