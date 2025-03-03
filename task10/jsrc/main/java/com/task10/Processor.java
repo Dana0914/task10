@@ -101,26 +101,27 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 			// Extract hourly data
 			JSONObject hourly = jsonObject.getJSONObject("hourly");
 			JSONObject hourlyUnits = jsonObject.getJSONObject("hourly_units");
+
 			JSONObject hourlyData = new JSONObject();
-			hourlyData.put("temperature_2m", hourly.getJSONArray("temperature_2m"));
 			hourlyData.put("time", hourly.getJSONArray("time"));
+			hourlyData.put("temperature_2m", hourly.getJSONArray("temperature_2m"));
 
 			// Include hourly units
 			JSONObject hourlyUnitsData = new JSONObject();
-			hourlyUnitsData.put("temperature_2m", hourlyUnits.getString("temperature_2m"));
 			hourlyUnitsData.put("time", hourlyUnits.getString("time"));
+			hourlyUnitsData.put("temperature_2m", hourlyUnits.getString("temperature_2m"));
 
 			// Add extracted data to forecast
 			JSONObject forecast = new JSONObject();
-			forecast.put("elevation", filteredData.getDouble("elevation"));
-			forecast.put("generationtime_ms", filteredData.getDouble("generationtime_ms"));
 			forecast.put("latitude", filteredData.getDouble("latitude"));
 			forecast.put("longitude", filteredData.getDouble("longitude"));
+			forecast.put("generationtime_ms", filteredData.getDouble("generationtime_ms"));
+			forecast.put("utc_offset_seconds", filteredData.getInt("utc_offset_seconds"));
 			forecast.put("timezone", filteredData.getString("timezone"));
 			forecast.put("timezone_abbreviation", filteredData.getString("timezone_abbreviation"));
-			forecast.put("utc_offset_seconds", filteredData.getInt("utc_offset_seconds"));
-			forecast.put("hourly", hourlyData);
+			forecast.put("elevation", filteredData.getDouble("elevation"));
 			forecast.put("hourly_units", hourlyUnitsData);
+			forecast.put("hourly", hourlyData);
 
 			// Create final object
 			JSONObject finalData = new JSONObject();
@@ -139,6 +140,7 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 				.withMap("forecast", jsonToMap(weatherData.getJSONObject("forecast")));
 
 		table.putItem(item);
+		context.getLogger().log("Table: " + table);
 	}
 
 	private Map<String, Object> jsonToMap(JSONObject json) {
