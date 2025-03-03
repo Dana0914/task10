@@ -97,7 +97,6 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 
 			// Extract required fields
 			Map<String, Object> filteredData = new HashMap<>();
-			filteredData.put("id", UUID.randomUUID().toString());
 			filteredData.put("latitude", jsonMap.get("latitude"));
 			filteredData.put("longitude", jsonMap.get("longitude"));
 			filteredData.put("elevation", jsonMap.get("elevation"));
@@ -127,7 +126,6 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 
 			// Create final data object
 			Map<String, Object> finalData = new HashMap<>();
-			finalData.put("id", filteredData.get("id"));
 			finalData.put("forecast", forecast);
 
 			return objectMapper.writeValueAsString(finalData);
@@ -138,7 +136,7 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 		context.getLogger().log("Weather Data to Store: " + weatherData.toString());
 
 		Item item = new Item()
-				.withPrimaryKey("id", (String) weatherData.get("id"))
+				.withPrimaryKey("id", UUID.randomUUID().toString())
 				.withMap("forecast", (Map<String, Object>) weatherData.get("forecast"));
 
 		try {
