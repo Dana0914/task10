@@ -33,7 +33,7 @@ import java.util.Map;
 	roleName = "processor-role",
 	isPublishVersion = true,
 	aliasName = "${lambdas_alias_name}",
-	tracingMode = TracingMode.Active
+	tracingMode = TracingMode.Active,
 	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
 @EnvironmentVariables(value = {
@@ -60,7 +60,7 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 
 	@Override
 	public Map<String, Object> handleRequest(Object request, Context context) {
-		System.out.println(System.getenv("target_table) + "is not empty");
+		System.out.println(System.getenv("target_table"));
 		Map<String, Object> response = new HashMap<>();
 		try {
 			// Fetch weather data as JSON string
