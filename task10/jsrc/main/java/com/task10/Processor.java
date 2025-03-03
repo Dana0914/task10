@@ -17,11 +17,8 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.handlers.TracingHandler;
 import okhttp3.*;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import java.util.List;
-import java.util.ArrayList;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 import java.io.IOException;
@@ -48,6 +45,7 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 			"&longitude=13.41" +
 			"&current=temperature_2m,wind_speed_10m" +
 			"&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m";
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	private final String TABLE_NAME = System.getenv("target_table");
 	private final OkHttpClient httpClient = new OkHttpClient();
@@ -61,9 +59,15 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 	public Map<String, Object> handleRequest(Object request, Context context) {
 		Map<String, Object> response = new HashMap<>();
 		try {
+			// Fetch weather data as JSON string
 			String weatherData = fetchWeatherData();
-			JSONObject parsedData = new JSONObject(weatherData);
+
+			// Convert JSON string to Map
+			Map<String, Object> parsedData = objectMapper.readValue(weatherData, new TypeReference<>() {});
+
+			// Store parsed data
 			storeWeatherData(parsedData, context);
+
 			response.put("status", "success");
 			response.put("message", "Weather data stored successfully!");
 		} catch (Exception e) {
@@ -85,91 +89,56 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 			}
 
 			// Parse response JSON
-			JSONObject jsonObject = new JSONObject(response.body().string());
+			Map<String, Object> jsonMap = objectMapper.readValue(response.body().string(), new TypeReference<>() {});
 
-			// Extract only required fields
-			JSONObject filteredData = new JSONObject();
+			// Extract required fields
+			Map<String, Object> filteredData = new HashMap<>();
 			filteredData.put("id", UUID.randomUUID().toString());
-			filteredData.put("latitude", jsonObject.getDouble("latitude"));
-			filteredData.put("longitude", jsonObject.getDouble("longitude"));
-			filteredData.put("elevation", jsonObject.getDouble("elevation"));
-			filteredData.put("generationtime_ms", jsonObject.getDouble("generationtime_ms"));
-			filteredData.put("timezone", jsonObject.getString("timezone"));
-			filteredData.put("timezone_abbreviation", jsonObject.getString("timezone_abbreviation"));
-			filteredData.put("utc_offset_seconds", jsonObject.getInt("utc_offset_seconds"));
+			filteredData.put("latitude", jsonMap.get("latitude"));
+			filteredData.put("longitude", jsonMap.get("longitude"));
+			filteredData.put("elevation", jsonMap.get("elevation"));
+			filteredData.put("generationtime_ms", jsonMap.get("generationtime_ms"));
+			filteredData.put("timezone", jsonMap.get("timezone"));
+			filteredData.put("timezone_abbreviation", jsonMap.get("timezone_abbreviation"));
+			filteredData.put("utc_offset_seconds", jsonMap.get("utc_offset_seconds"));
 
 			// Extract hourly data
-			JSONObject hourly = jsonObject.getJSONObject("hourly");
-			JSONObject hourlyUnits = jsonObject.getJSONObject("hourly_units");
+			Map<String, Object> hourly = (Map<String, Object>) jsonMap.get("hourly");
+			Map<String, Object> hourlyUnits = (Map<String, Object>) jsonMap.get("hourly_units");
 
-			JSONObject hourlyData = new JSONObject();
-			hourlyData.put("time", hourly.getJSONArray("time"));
-			hourlyData.put("temperature_2m", hourly.getJSONArray("temperature_2m"));
+			Map<String, Object> hourlyData = new HashMap<>();
+			hourlyData.put("time", hourly.get("time"));
+			hourlyData.put("temperature_2m", hourly.get("temperature_2m"));
 
 			// Include hourly units
-			JSONObject hourlyUnitsData = new JSONObject();
-			hourlyUnitsData.put("time", hourlyUnits.getString("time"));
-			hourlyUnitsData.put("temperature_2m", hourlyUnits.getString("temperature_2m"));
+			Map<String, Object> hourlyUnitsData = new HashMap<>();
+			hourlyUnitsData.put("time", hourlyUnits.get("time"));
+			hourlyUnitsData.put("temperature_2m", hourlyUnits.get("temperature_2m"));
 
-			// Add extracted data to forecast
-			JSONObject forecast = new JSONObject();
-			forecast.put("latitude", filteredData.getDouble("latitude"));
-			forecast.put("longitude", filteredData.getDouble("longitude"));
-			forecast.put("generationtime_ms", filteredData.getDouble("generationtime_ms"));
-			forecast.put("utc_offset_seconds", filteredData.getInt("utc_offset_seconds"));
-			forecast.put("timezone", filteredData.getString("timezone"));
-			forecast.put("timezone_abbreviation", filteredData.getString("timezone_abbreviation"));
-			forecast.put("elevation", filteredData.getDouble("elevation"));
+			// Create forecast data
+			Map<String, Object> forecast = new HashMap<>();
+			forecast.putAll(filteredData);
 			forecast.put("hourly_units", hourlyUnitsData);
 			forecast.put("hourly", hourlyData);
 
-			// Create final object
-			JSONObject finalData = new JSONObject();
-			finalData.put("id", filteredData.getString("id"));
+			// Create final data object
+			Map<String, Object> finalData = new HashMap<>();
+			finalData.put("id", filteredData.get("id"));
 			finalData.put("forecast", forecast);
 
-			return finalData.toString();
+			return objectMapper.writeValueAsString(finalData);
 		}
-
 	}
-	private void storeWeatherData(JSONObject weatherData, Context context) {
+
+	private void storeWeatherData(Map<String, Object> weatherData, Context context) {
 		context.getLogger().log("Weather Data to Store: " + weatherData.toString());
 
 		Item item = new Item()
-				.withPrimaryKey("id", weatherData.getString("id"))
-				.withMap("forecast", jsonToMap(weatherData.getJSONObject("forecast")));
+				.withPrimaryKey("id", (String) weatherData.get("id"))
+				.withMap("forecast", (Map<String, Object>) weatherData.get("forecast"));
 
 		table.putItem(item);
 		context.getLogger().log("Table: " + table);
 	}
 
-	private Map<String, Object> jsonToMap(JSONObject json) {
-		Map<String, Object> map = new HashMap<>();
-		for (String key : json.keySet()) {
-			Object value = json.get(key);
-			if (value instanceof JSONObject) {
-				map.put(key, jsonToMap((JSONObject) value)); // Recursively convert
-			} else if (value instanceof JSONArray) {
-				map.put(key, jsonArrayToList((JSONArray) value)); // Convert JSONArray
-			} else {
-				map.put(key, value);
-			}
-		}
-		return map;
-	}
-
-	private List<Object> jsonArrayToList(JSONArray jsonArray) {
-		List<Object> list = new ArrayList<>();
-		for (int i = 0; i < jsonArray.length(); i++) {
-			Object value = jsonArray.get(i);
-			if (value instanceof JSONObject) {
-				list.add(jsonToMap((JSONObject) value));
-			} else if (value instanceof JSONArray) {
-				list.add(jsonArrayToList((JSONArray) value));
-			} else {
-				list.add(value);
-			}
-		}
-		return list;
-	}
 }
