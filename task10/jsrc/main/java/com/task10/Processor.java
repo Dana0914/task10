@@ -58,7 +58,7 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 		try {
 			String weatherData = fetchWeatherData();
 			JSONObject parsedData = new JSONObject(weatherData);
-			storeWeatherData(parsedData);
+			storeWeatherData(parsedData, context);
 			response.put("status", "success");
 			response.put("message", "Weather data stored successfully!");
 		} catch (Exception e) {
@@ -126,7 +126,9 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 		}
 
 	}
-	private void storeWeatherData(JSONObject weatherData) {
+	private void storeWeatherData(JSONObject weatherData, Context context) {
+		context.getLogger().log("Weather Data to Store: " + weatherData.toString());
+
 		Item item = new Item()
 				.withPrimaryKey("id", weatherData.getString("id"))
 				.withMap("forecast", weatherData.getJSONObject("forecast").toMap());
