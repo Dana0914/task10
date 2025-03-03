@@ -4,9 +4,17 @@
       "Statement": [
         {
           "Action": [
+            "lambda:CreateFunctionUrlConfig",
+            "lambda:GetFunctionUrlConfig",
+            "lambda:UpdateFunctionUrlConfig",
+            "lambda:DeleteFunctionUrlConfig",
+            "lambda:UpdateFunctionConfiguration",
             "logs:CreateLogGroup",
             "logs:CreateLogStream",
             "logs:PutLogEvents",
+            "xray:PutTraceSegments",
+            "xray:PutTelemetryRecords",
+            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:Query",
             "dynamodb:PutItem",
@@ -27,7 +35,6 @@
   },
   "processor-role": {
     "predefined_policies": [
-      "AWSXRayDaemonWriteAccess"
     ],
     "principal_service": "lambda",
     "custom_policies": [

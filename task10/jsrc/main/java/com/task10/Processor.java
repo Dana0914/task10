@@ -19,6 +19,8 @@ import com.amazonaws.xray.handlers.TracingHandler;
 import okhttp3.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.syndicate.deployment.model.TracingMode;
+
 
 
 import java.io.IOException;
@@ -41,7 +43,7 @@ import java.util.Map;
 		invokeMode = InvokeMode.BUFFERED
 )
 public class Processor implements RequestHandler<Object, Map<String, Object>> {
-	private static final String WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast?latitude=52.52" +
+	private final String WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast?latitude=52.52" +
 			"&longitude=13.41" +
 			"&current=temperature_2m,wind_speed_10m" +
 			"&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m";
@@ -137,8 +139,13 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 				.withPrimaryKey("id", (String) weatherData.get("id"))
 				.withMap("forecast", (Map<String, Object>) weatherData.get("forecast"));
 
-		table.putItem(item);
-		context.getLogger().log("Table: " + table);
+		try {
+			table.putItem(item);
+			context.getLogger().log("Successfully stored item: " + item.toJSONPretty());
+		} catch (Exception e) {
+			context.getLogger().log("DynamoDB putItem failed: " + e.getMessage());
+			throw e;
+		}
 	}
 
 }
