@@ -33,6 +33,7 @@ import java.util.Map;
 	roleName = "processor-role",
 	isPublishVersion = true,
 	aliasName = "${lambdas_alias_name}",
+	tracingMode = TracingMode.Active
 	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
 @EnvironmentVariables(value = {
@@ -59,6 +60,7 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 
 	@Override
 	public Map<String, Object> handleRequest(Object request, Context context) {
+		System.out.println(System.getenv("target_table) + "is not empty");
 		Map<String, Object> response = new HashMap<>();
 		try {
 			// Fetch weather data as JSON string
@@ -141,11 +143,10 @@ public class Processor implements RequestHandler<Object, Map<String, Object>> {
 
 		try {
 			table.putItem(item);
-			context.getLogger().log("Successfully stored item: " + item.toJSONPretty());
+			context.getLogger().log("Successfully stored item: " + table);
 		} catch (Exception e) {
 			context.getLogger().log("DynamoDB putItem failed: " + e.getMessage());
 			throw e;
 		}
 	}
-
 }
